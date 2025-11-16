@@ -1,0 +1,21 @@
+{
+  "name": "challenge-assignment",
+  "version": "1.0.0",
+  "description": "Programming and Algorithm Test - 5 Challenges",
+  "scripts": {
+    "install:all": "npm install && cd challenge1 && npm install && cd ../challenge2 && npm install && cd ../challenge3/backend && npm install && cd ../frontend && npm install && cd ../../challenge4/caller-service && npm install && cd ../throttle-service && npm install && cd ../echo-service && npm install && cd ../../challenge5/backend && npm install && cd ../frontend && npm install",
+    "challenge1": "cd challenge1 && npm start",
+    "challenge2": "cd challenge2 && npm start",
+    "challenge3:backend": "cd challenge3/backend && npm start",
+    "challenge3:frontend": "cd challenge3/frontend && npm start",
+    "challenge4:caller": "cd challenge4/caller-service && npm start",
+    "challenge4:throttle": "cd challenge4/throttle-service && npm start",
+    "challenge4:echo": "cd challenge4/echo-service && npm start",
+    "challenge5:backend": "cd challenge5/backend && npm start",
+    "challenge5:frontend": "cd challenge5/frontend && npm start"
+  },
+  "keywords": ["challenge", "programming", "algorithm"],
+  "author": "",
+  "license": "ISC"
+}
+
