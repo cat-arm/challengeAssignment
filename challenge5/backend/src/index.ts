@@ -5,6 +5,7 @@
 
 import express, { Request, Response } from "express";
 import cors from "cors";
+import crypto from "crypto";
 
 const app = express();
 const PORT = 5001;
@@ -116,6 +117,65 @@ class UserStorage {
 
 // Create user storage instance
 const userStorage = new UserStorage();
+
+/**
+ * Seed mock data - Generate 40 sample users
+ */
+function seedMockData() {
+  const existingUsers = userStorage.getAllUsers();
+  if (existingUsers.length > 0) {
+    console.log(`Database already has ${existingUsers.length} users. Skipping seed.`);
+    return;
+  }
+
+  const firstNames = [
+    "John", "Jane", "Michael", "Sarah", "David", "Emily", "James", "Emma", "Robert", "Olivia",
+    "William", "Sophia", "Richard", "Isabella", "Joseph", "Mia", "Thomas", "Charlotte", "Charles", "Amelia",
+    "Daniel", "Harper", "Matthew", "Evelyn", "Anthony", "Abigail", "Mark", "Elizabeth", "Donald", "Sofia",
+    "Steven", "Avery", "Paul", "Ella", "Andrew", "Madison", "Joshua", "Scarlett", "Kenneth", "Victoria"
+  ];
+
+  const lastNames = [
+    "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez",
+    "Hernandez", "Lopez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee",
+    "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker", "Young",
+    "Allen", "King", "Wright", "Scott", "Torres", "Nguyen", "Hill", "Flores", "Green", "Adams"
+  ];
+
+  const domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "example.com"];
+
+  console.log("Seeding mock data...");
+
+  for (let i = 0; i < 40; i++) {
+    const firstName = firstNames[i % firstNames.length];
+    const lastName = lastNames[Math.floor(i / firstNames.length) % lastNames.length];
+    const name = `${firstName} ${lastName}`;
+    const age = Math.floor(Math.random() * 50) + 18; // Age between 18-67
+    // Make email unique by adding index
+    const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@${domains[i % domains.length]}`;
+    
+    // Generate avatar URL using email hash
+    const normalizedEmail = email.toLowerCase().trim();
+    const hash = crypto.createHash("md5").update(normalizedEmail).digest("hex");
+    const avatarTypes = ["robohash", "identicon", "monsterid", "wavatar", "retro"];
+    const avatarType = avatarTypes[i % avatarTypes.length];
+    const avatarUrl = `https://gravatar.com/avatar/${hash}?s=150&d=${avatarType}&r=x`;
+
+    try {
+      userStorage.createUser({
+        name,
+        age,
+        email,
+        avatarUrl,
+      });
+    } catch (error) {
+      // If email already exists, skip
+      console.warn(`Skipping user ${name} - email already exists`);
+    }
+  }
+
+  console.log(`✅ Successfully seeded ${userStorage.getAllUsers().length} mock users`);
+}
 
 /**
  * Validation utility functions
@@ -311,6 +371,51 @@ app.delete("/api/user/:userId", (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/avatar/generate - Generate a random Gravatar avatar URL
+ * Query parameters (optional):
+ *   - email: Email address to generate consistent avatar (optional)
+ *   - size: Image size (default: 150)
+ *   - default: Default avatar type (robohash, identicon, monsterid, wavatar, retro, blank)
+ */
+app.get("/api/avatar/generate", (req: Request, res: Response) => {
+  try {
+    const email = req.query.email as string | undefined;
+    const size = parseInt(req.query.size as string) || 150;
+    const defaultType = (req.query.default as string) || "robohash";
+
+    // Valid default types for Gravatar
+    const validDefaultTypes = ["robohash", "identicon", "monsterid", "wavatar", "retro", "blank"];
+    const avatarType = validDefaultTypes.includes(defaultType) ? defaultType : "robohash";
+
+    let hash: string;
+
+    if (email && email.trim() !== "") {
+      // Generate MD5 hash from email (lowercase and trimmed)
+      const normalizedEmail = email.toLowerCase().trim();
+      hash = crypto.createHash("md5").update(normalizedEmail).digest("hex");
+    } else {
+      // Generate random hash for random avatar
+      const randomString = Math.random().toString() + Date.now().toString();
+      hash = crypto.createHash("md5").update(randomString).digest("hex");
+    }
+
+    // Gravatar URL format: https://gravatar.com/avatar/{hash}?s={size}&d={default}&r=x
+    const avatarUrl = `https://gravatar.com/avatar/${hash}?s=${size}&d=${avatarType}&r=x`;
+
+    res.json({
+      avatarUrl,
+      hash,
+      size,
+      defaultType: avatarType,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "Internal server error",
+    });
+  }
+});
+
 // Health check endpoint
 app.get("/health", (req: Request, res: Response) => {
   res.json({
@@ -321,8 +426,19 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
+// Seed mock data on server start
+seedMockData();
+
 // Start server
 app.listen(PORT, () => {
   console.log(`User Management API running on http://localhost:${PORT}`);
-  console.log(`API endpoints available at http://localhost:${PORT}/api/user`);
+  console.log(`API endpoints available:`);
+  console.log(`  - GET    http://localhost:${PORT}/api/user`);
+  console.log(`  - GET    http://localhost:${PORT}/api/user/:userId`);
+  console.log(`  - POST   http://localhost:${PORT}/api/user`);
+  console.log(`  - PUT    http://localhost:${PORT}/api/user/:userId`);
+  console.log(`  - DELETE http://localhost:${PORT}/api/user/:userId`);
+  console.log(`  - GET    http://localhost:${PORT}/api/avatar/generate`);
+  console.log(`  - GET    http://localhost:${PORT}/health`);
+  console.log(`\n📊 Total users in database: ${userStorage.getAllUsers().length}`);
 });
