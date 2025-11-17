@@ -24,8 +24,9 @@ function Redirect() {
 
       try {
         // Call backend API to get original URL
-        // Use /api/url/:key endpoint to get URL as JSON
-        const response = await axios.get(`http://localhost:3001/api/${key}`);
+        // Use /api/:key endpoint to get URL as JSON
+        // Use relative path since proxy is configured
+        const response = await axios.get(`/api/${key}`);
 
         // If we get here, the key exists and we have the original URL
         if (response.data && response.data.url) {
@@ -126,8 +127,9 @@ function Home() {
     setLoading(true);
 
     try {
-      // Send POST request to backend API at port 3001
-      const response = await axios.post("http://localhost:3001/api/shorten", {
+      // Send POST request to backend API
+      // Use relative path since proxy is configured
+      const response = await axios.post("/api/shorten", {
         url: url,
       });
 
@@ -208,8 +210,8 @@ function Home() {
           <strong>Short URL Key:</strong> <code>{result}</code>
           <br />
           <strong>Short URL:</strong>{" "}
-          <a href={`http://localhost:80/${result}`} target="_blank" rel="noopener noreferrer">
-            http://localhost:80/{result}
+          <a href={`http://localhost/${result}`} target="_blank" rel="noopener noreferrer">
+            http://localhost/{result}
           </a>
         </div>
       )}

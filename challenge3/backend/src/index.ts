@@ -43,9 +43,16 @@ class URLStorage {
    */
   shorten(originalURL: string): string {
     // Validate URL format
+    let url: URL;
     try {
-      new URL(originalURL); // This will throw if URL is invalid
+      url = new URL(originalURL); // This will throw if URL is invalid
     } catch (error) {
+      throw new Error("Invalid URL format");
+    }
+
+    // Validate that URL uses http or https protocol
+    const allowedProtocols = ["http:", "https:"];
+    if (!allowedProtocols.includes(url.protocol)) {
       throw new Error("Invalid URL format");
     }
 
@@ -136,11 +143,16 @@ app.get("/api/:key", (req: Request, res: Response) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`URL Shortening Service API running on http://localhost:${PORT}`);
-  console.log(`API Endpoints:`);
-  console.log(`  POST http://localhost:${PORT}/shorten - Create short URL`);
-  console.log(`  GET  http://localhost:${PORT}/{KEY} - Redirect to original URL`);
-  console.log(`\nNote: Frontend should be running separately and connect to this API`);
-});
+// Export app for testing
+export { app, urlStorage };
+
+// Start server (only if not in test environment)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`URL Shortening Service API running on http://localhost:${PORT}`);
+    console.log(`API Endpoints:`);
+    console.log(`  POST http://localhost:${PORT}/shorten - Create short URL`);
+    console.log(`  GET  http://localhost:${PORT}/{KEY} - Redirect to original URL`);
+    console.log(`\nNote: Frontend should be running separately and connect to this API`);
+  });
+}

@@ -96,10 +96,13 @@ class UserStorage {
       }
     }
 
-    // Update user
+    // Update user - only include fields that are provided (not undefined)
     const updatedUser: User = {
       ...existingUser,
-      ...userData,
+      ...(userData.name !== undefined && { name: userData.name }),
+      ...(userData.age !== undefined && { age: userData.age }),
+      ...(userData.email !== undefined && { email: userData.email }),
+      ...(userData.avatarUrl !== undefined && { avatarUrl: userData.avatarUrl }),
       id, // Ensure ID doesn't change
     };
 
@@ -426,19 +429,26 @@ app.get("/health", (req: Request, res: Response) => {
   });
 });
 
-// Seed mock data on server start
-seedMockData();
+// Export app and userStorage for testing
+export { app, userStorage };
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`User Management API running on http://localhost:${PORT}`);
-  console.log(`API endpoints available:`);
-  console.log(`  - GET    http://localhost:${PORT}/api/user`);
-  console.log(`  - GET    http://localhost:${PORT}/api/user/:userId`);
-  console.log(`  - POST   http://localhost:${PORT}/api/user`);
-  console.log(`  - PUT    http://localhost:${PORT}/api/user/:userId`);
-  console.log(`  - DELETE http://localhost:${PORT}/api/user/:userId`);
-  console.log(`  - GET    http://localhost:${PORT}/api/avatar/generate`);
-  console.log(`  - GET    http://localhost:${PORT}/health`);
-  console.log(`\n📊 Total users in database: ${userStorage.getAllUsers().length}`);
-});
+// Seed mock data on server start (skip in test environment)
+if (process.env.NODE_ENV !== "test") {
+  seedMockData();
+}
+
+// Start server (only if not in test environment)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`User Management API running on http://localhost:${PORT}`);
+    console.log(`API endpoints available:`);
+    console.log(`  - GET    http://localhost:${PORT}/api/user`);
+    console.log(`  - GET    http://localhost:${PORT}/api/user/:userId`);
+    console.log(`  - POST   http://localhost:${PORT}/api/user`);
+    console.log(`  - PUT    http://localhost:${PORT}/api/user/:userId`);
+    console.log(`  - DELETE http://localhost:${PORT}/api/user/:userId`);
+    console.log(`  - GET    http://localhost:${PORT}/api/avatar/generate`);
+    console.log(`  - GET    http://localhost:${PORT}/health`);
+    console.log(`\n📊 Total users in database: ${userStorage.getAllUsers().length}`);
+  });
+}
