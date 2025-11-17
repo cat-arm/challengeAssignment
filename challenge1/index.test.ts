@@ -109,6 +109,22 @@ describe("Challenge 1: Matrix Turtle Problem", () => {
       const expected = "4,8,6,9,3,3,6,7,2,2,5,4,5,8,1,8,6,4,7,8,8,8,9,0,0,7,0,8,7,5,7,2,7,0";
       expect(result).toBe(expected);
     });
+
+    test("should handle actual input1-2.txt data", () => {
+      const matrix = [
+        [7, 2, 0, 1, 0, 2, 9],
+        [8, 4, 8, 6, 9, 3, 3],
+        [7, 8, 8, 8, 9, 0, 6],
+        [4, 7, 2, 7, 0, 0, 7],
+        [6, 5, 7, 8, 0, 7, 2],
+        [8, 1, 8, 5, 4, 5, 2],
+      ];
+      const start = [2, 3];
+      const result = problem1_2_clockwise(matrix, start);
+      // Expected output from actual execution
+      const expected = "8,9,0,6,7,2,2,5,4,5,8,1,8,6,4,7,2,7,0,0,7,0,8,7,5";
+      expect(result).toBe(expected);
+    });
   });
 
   describe("Problem 1.3: Find target number with shortest/longest routes", () => {

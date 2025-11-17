@@ -70,9 +70,11 @@ const rateLimiter = new RateLimiter();
 
 /**
  * Logger utility class for writing logs to file
+ * Uses file stream to avoid EMFILE errors with high volume logging
  */
 class Logger {
   private logFilePath: string;
+  private writeStream: fs.WriteStream;
 
   constructor(logFileName: string) {
     // Create logs directory if it doesn't exist
@@ -81,6 +83,8 @@ class Logger {
       fs.mkdirSync(logsDir, { recursive: true });
     }
     this.logFilePath = path.join(logsDir, logFileName);
+    // Open file stream for writing (append mode)
+    this.writeStream = fs.createWriteStream(this.logFilePath, { flags: "a" });
   }
 
   /**
@@ -89,8 +93,16 @@ class Logger {
   log(message: string): void {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${message}\n`;
-    fs.appendFileSync(this.logFilePath, logEntry);
+    // Use write stream instead of appendFileSync to avoid file handle issues
+    this.writeStream.write(logEntry);
     console.log(`[Echo Service] ${logEntry.trim()}`);
+  }
+
+  /**
+   * Close the write stream (call before process exit)
+   */
+  close(): void {
+    this.writeStream.end();
   }
 }
 
@@ -140,4 +152,17 @@ app.listen(PORT, () => {
   logger.log(`Echo Service started on port ${PORT}`);
   logger.log(`Rate limit: 512 calls per minute`);
   console.log(`Echo Service running on http://localhost:${PORT}`);
+});
+
+// Handle graceful shutdown
+process.on("SIGINT", () => {
+  logger.log("Shutting down Echo Service...");
+  logger.close();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  logger.log("Shutting down Echo Service...");
+  logger.close();
+  process.exit(0);
 });

@@ -7,17 +7,37 @@
 // - 4th minute: 65,536 calls
 // Each call has incremental ID and logs timestamp
 
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import * as fs from "fs";
 import * as path from "path";
+import http from "http";
+import https from "https";
 
 const THROTTLE_SERVICE_URL = "http://localhost:4002/forward"; // Throttle Service endpoint
 
+// Create HTTP agent with connection pooling to prevent EMFILE errors
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 50, // Maximum number of sockets per host
+  maxFreeSockets: 10, // Maximum number of free sockets to keep open
+  timeout: 60000,
+  keepAliveMsecs: 30000,
+});
+
+// Create axios instance with connection pooling
+const axiosInstance: AxiosInstance = axios.create({
+  httpAgent,
+  timeout: 10000, // 10 second timeout
+  maxRedirects: 5,
+});
+
 /**
  * Logger utility class for writing logs to file
+ * Uses file stream to avoid EMFILE errors with high volume logging
  */
 class Logger {
   private logFilePath: string;
+  private writeStream: fs.WriteStream;
 
   constructor(logFileName: string) {
     // Create logs directory if it doesn't exist
@@ -26,6 +46,8 @@ class Logger {
       fs.mkdirSync(logsDir, { recursive: true });
     }
     this.logFilePath = path.join(logsDir, logFileName);
+    // Open file stream for writing (append mode)
+    this.writeStream = fs.createWriteStream(this.logFilePath, { flags: "a" });
   }
 
   /**
@@ -34,8 +56,16 @@ class Logger {
   log(message: string): void {
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] ${message}\n`;
-    fs.appendFileSync(this.logFilePath, logEntry);
+    // Use write stream instead of appendFileSync to avoid file handle issues
+    this.writeStream.write(logEntry);
     console.log(`[Caller Service] ${logEntry.trim()}`);
+  }
+
+  /**
+   * Close the write stream (call before process exit)
+   */
+  close(): void {
+    this.writeStream.end();
   }
 }
 
@@ -54,10 +84,8 @@ async function makeCall(callId: number): Promise<void> {
   logger.log(`Calling Throttle Service - ID: ${callId} | Data: ${callData.data}`);
 
   try {
-    // Make POST request to Throttle Service
-    const response = await axios.post(THROTTLE_SERVICE_URL, callData, {
-      timeout: 10000, // 10 second timeout
-    });
+    // Make POST request to Throttle Service using pooled connection
+    const response = await axiosInstance.post(THROTTLE_SERVICE_URL, callData);
 
     const callEndTime = Date.now();
     const duration = callEndTime - callStartTime;
@@ -160,12 +188,36 @@ async function main() {
   const minute4Duration = Date.now() - minute4Start;
   logger.log(`Minute 4 completed in ${minute4Duration}ms`);
 
-  logger.log("=== All calls completed ===");
   logger.log(`Total calls made: ${callId - 1}`);
 }
 
+// Cleanup function to close connections
+function cleanup() {
+  logger.log("Cleaning up connections...");
+  httpAgent.destroy(); // Close all connections
+  logger.close();
+}
+
 // Run main function
-main().catch((error) => {
-  logger.log(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
-  process.exit(1);
+main()
+  .then(() => {
+    cleanup();
+  })
+  .catch((error) => {
+    logger.log(`Fatal error: ${error instanceof Error ? error.message : String(error)}`);
+    cleanup();
+    process.exit(1);
+  });
+
+// Handle graceful shutdown
+process.on("SIGINT", () => {
+  logger.log("Shutting down Caller Service...");
+  cleanup();
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  logger.log("Shutting down Caller Service...");
+  cleanup();
+  process.exit(0);
 });
