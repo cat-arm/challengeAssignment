@@ -152,9 +152,6 @@ export function problem1_2_clockwise(matrix: number[][], start: number[]): strin
 export function problem1_3_findRoute(matrix: number[][], startValue: number, targetValue: number): string {
   const turtle = new MatrixTurtle(matrix);
 
-  // valid border
-  const isInBounds = (r: number, c: number) => r >= 0 && r < turtle.maxRows && c >= 0 && c < turtle.maxCols;
-
   const directions = [
     { label: "N", dr: -1, dc: 0 }, // up
     { label: "E", dr: 0, dc: 1 }, // right
